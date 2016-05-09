@@ -483,7 +483,7 @@ proc QTP_NewQTobj {args} {
 #					tra_mode: rfc2544 traffic mode, "pair" or "round".
 #					port_list: list of ports used in the test.
 #					protocol: type of protocol, "MAC" "IPv4" or "IPv6".
-#					HOL: rfc2889 Congestion Control parameter, "oneGroup" or "manyGroup".
+#					HOL: rfc2889 Congestion Control parameter, "OneGroup" or "MultipleGroup".
 #					latency_type: rfc2544 Throughput parameter, "CutThrough" or "StoreAndForward".
 #
 #return value:		none.
@@ -771,7 +771,7 @@ puts "latency: $latency_type"
 					ixNet setA $element/trafficMapping -mesh oneToMany
 					ixNet commit
 puts "HOL: $HOL"
-					if {$HOL == "oneGroup"} {
+					if {$HOL == "OneGroup"} {
 						ixNet setMultiAttribute $element/trafficMapping/map:1 \
 							-setName "Endpoint\ Set-1"\
 							-source "Ethernet\ -\ 001" \
@@ -1403,10 +1403,10 @@ puts "args:$args"
                
             }
             -hol_type {
-			    if { $value == "oneGroup" || $value == "manyGroup" } {
+			    if { $value == "OneGroup" || $value == "MultipleGroup" } {
 				    set hol_type $value
 				} else {
-				    puts "ERROR: -hol_type format is not right, the value is $value, should be oneGroup|manyGroup"
+				    puts "ERROR: -hol_type format is not right, the value is $value, should be OneGroup|MultipleGroup"
 					puts "NAK"
 					after 3000
 				}
@@ -1599,7 +1599,7 @@ puts "args:$args"
             }
             -media {
                set media [string tolower $value]
-			   if { $media == "fiber" || $medai ==  "copper" } {
+			   if { $media == "fiber" || $media ==  "copper" } {
 			   } else {
 			       puts "Error:media format error: media:$media, should be fiber | copper"
 			       puts "NAK"
@@ -1678,7 +1678,7 @@ puts "args:$args"
 	puts "Reserve real port $port_list"
     set port_handle [QTP_PortListSet  -port_list $port_list]
 	after 10000
-puts 30  
+ 
     puts "Check ports state"
     foreach pHandle $port_handle {
 	    set pState [ixNet getA $pHandle -state]
@@ -1740,13 +1740,22 @@ puts 30
 	close $resfile
 	
     if {$10m_enable} {
-        puts "10m $autoneg $media config"
+        puts "10M $autoneg $media config"
         set ix_type ethernet
-        foreach pHandle $port_handle {        
-            ixNet setA $pHandle -type $ix_type
-            ixNet commit
-            ixNet setA $pHandle/l1Config/ethernet -media $media
-            ixNet commit
+        foreach pHandle $port_handle { 
+            set ix_cur_type [ixNet getA $pHandle -type]	
+            if {$ix_cur_type != $ix_type } {
+			    puts "Error:This card does not support 10M test"
+				puts "NAK"
+				after 3000
+			}
+			after 1000
+			set ix_cur_media [ixNet getA $pHandle/l1Config/ethernet -media]
+			if { $ix_cur_media != $media } {
+			    ixNet setA $pHandle/l1Config/ethernet -media $media
+                ixNet commit
+			}
+            
             if { $autoneg == "Auto" } {
                 ixNet setA $pHandle/l1Config/ethernet -autoNegotiate True
                 ixNet setA $pHandle/l1Config/ethernet -speedAuto {speed10fd speed10hd}
@@ -1762,6 +1771,21 @@ puts 30
             }
             
         }
+		after 5000
+		puts "Check ports state"
+		foreach pHandle $port_handle {
+			set pState [ixNet getA $pHandle -state]
+			if { $pState != "up" } {
+				after 5000
+				set pState [ixNet getA $pHandle -state]
+				if { $pState != "up" } {
+					puts "Error:10M $autoneg $media config,port state is not up: $pHandle state $pState"
+					puts "NAK"
+					after 3000
+				}
+			}
+		}	
+		after 1000
         
 puts $progressInit
 		foreach {key handle} [array get QTobj] {
@@ -1773,13 +1797,22 @@ puts $progressInit
         
     }
     if {$100m_enable} {
-         puts "100m $autoneg $media config"
+         puts "100M $autoneg $media config"
         set ix_type ethernet
-        foreach pHandle $port_handle {        
-            ixNet setA $pHandle -type $ix_type
-            ixNet commit
-            ixNet setA $pHandle/l1Config/ethernet -media $media
-            ixNet commit
+        foreach pHandle $port_handle {
+            set ix_cur_type [ixNet getA $pHandle -type]	
+            if {$ix_cur_type != $ix_type } {
+			    puts "Error:This card does not support 100M  test"
+				puts "NAK"
+				after 3000
+			}
+			after 1000
+			set ix_cur_media [ixNet getA $pHandle/l1Config/ethernet -media]
+			if { $ix_cur_media != $media } {
+			    ixNet setA $pHandle/l1Config/ethernet -media $media
+                ixNet commit
+			}        
+            
             if { $autoneg == "Auto" } {
                 ixNet setA $pHandle/l1Config/ethernet -autoNegotiate True
                 ixNet setA $pHandle/l1Config/ethernet -speedAuto {speed100fd speed100hd}
@@ -1795,6 +1828,21 @@ puts $progressInit
             }
             
         }
+		after 5000
+		puts "Check ports state"
+		foreach pHandle $port_handle {
+			set pState [ixNet getA $pHandle -state]
+			if { $pState != "up" } {
+				after 5000
+				set pState [ixNet getA $pHandle -state]
+				if { $pState != "up" } {
+					puts "Error:100M $autoneg $media config,port state is not up: $pHandle state $pState"
+					puts "NAK"
+					after 3000
+				}
+			}
+		}	
+		after 1000
         
 puts $progressInit
         foreach {key handle} [array get QTobj] {
@@ -1807,13 +1855,22 @@ puts $progressInit
         }
     }
     if {$1g_enable} {
-         puts "1g $autoneg $media config"
+        puts "1g $autoneg $media config"
         set ix_type ethernet
-        foreach pHandle $port_handle {        
-            ixNet setA $pHandle -type $ix_type
-            ixNet commit
-            ixNet setA $pHandle/l1Config/ethernet -media $media
-            ixNet commit
+        foreach pHandle $port_handle {   
+            set ix_cur_type [ixNet getA $pHandle -type]	
+            if {$ix_cur_type != $ix_type } {
+			    puts "Error:This card does not support 1g test"
+				puts "NAK"
+				after 3000
+			}
+			after 1000
+			set ix_cur_media [ixNet getA $pHandle/l1Config/ethernet -media]
+			if { $ix_cur_media != $media } {
+			    ixNet setA $pHandle/l1Config/ethernet -media $media
+                ixNet commit
+			}    		
+                      
             if { $autoneg == "Auto" } {
                 ixNet setA $pHandle/l1Config/ethernet -autoNegotiate True
                 ixNet setA $pHandle/l1Config/ethernet -speedAuto auto
@@ -1829,6 +1886,21 @@ puts $progressInit
             }
             
         }
+		after 5000
+		puts "Check ports state"
+		foreach pHandle $port_handle {
+			set pState [ixNet getA $pHandle -state]
+			if { $pState != "up" } {
+				after 5000
+				set pState [ixNet getA $pHandle -state]
+				if { $pState != "up" } {
+					puts "Error:1g $autoneg $media config,port state is not up: $pHandle state $pState"
+					puts "NAK"
+					after 3000
+				}
+			}
+		}	
+		after 1000
         
 puts $progressInit
         foreach {key handle} [array get QTobj] {
@@ -1841,10 +1913,38 @@ puts $progressInit
     if {$10g_enable} {
          puts "10g config"
         set ix_type tenGigLan
-        foreach pHandle $port_handle {        
-            ixNet setA $pHandle -type $ix_type
-            ixNet commit                               
+        foreach pHandle $port_handle {   
+            set ix_cur_type [ixNet getA $pHandle -type]	
+			puts "curtype :$ix_cur_type"
+            if {$ix_cur_type != $ix_type } {			
+			    ixNet setA $pHandle -type $ix_type
+                ixNet commit
+			}
+            after 1000			
+            set ix_cur_type [ixNet getA $pHandle -type]
+            if {$ix_cur_type != $ix_type } {			
+			    puts "Error:This card does not support 10g test"
+				puts "NAK"
+				after 3000
+			}
+            after 1000			
+                                          
         }
+		after 5000
+		puts "Check ports state"
+		foreach pHandle $port_handle {
+			set pState [ixNet getA $pHandle -state]
+			if { $pState != "up" } {
+				after 5000
+				set pState [ixNet getA $pHandle -state]
+				if { $pState != "up" } {
+					puts "Error:10g config,port state is not up: $pHandle state $pState"
+					puts "NAK"
+					after 3000
+				}
+			}
+		}	
+		after 1000
         
 puts $progressInit
         foreach {key handle} [array get QTobj] {
@@ -1867,12 +1967,40 @@ puts $progressInit
 
     }
     if {$40g_enable} {
-         puts "40g config"
+        puts "40g config"
         set ix_type fortyGigLan
-        foreach pHandle $port_handle {        
-            ixNet setA $pHandle -type $ix_type
-            ixNet commit                               
+        foreach pHandle $port_handle {  
+            set ix_cur_type [ixNet getA $pHandle -type]	
+			puts "curtype :$ix_cur_type"
+            if {$ix_cur_type != $ix_type } {			
+			    ixNet setA $pHandle -type $ix_type
+                ixNet commit
+			}
+            after 1000			
+            set ix_cur_type [ixNet getA $pHandle -type]
+            if {$ix_cur_type != $ix_type } {			
+			    puts "Error:This card does not support 40g test"
+				puts "NAK"
+				after 3000
+			}
+            after 1000			
         }
+		
+		after 5000
+		puts "Check ports state"
+		foreach pHandle $port_handle {
+			set pState [ixNet getA $pHandle -state]
+			if { $pState != "up" } {
+				after 5000
+				set pState [ixNet getA $pHandle -state]
+				if { $pState != "up" } {
+					puts "Error:40g config,port state is not up: $pHandle state $pState"
+					puts "NAK"
+					after 3000
+				}
+			}
+		}	
+		after 1000
         
 puts $progressInit
         foreach {key handle} [array get QTobj] {
@@ -1886,9 +2014,37 @@ puts $progressInit
          puts "100g config"
         set ix_type hundredGigLan
         foreach pHandle $port_handle {        
-            ixNet setA $pHandle -type $ix_type
-            ixNet commit                               
+            set ix_cur_type [ixNet getA $pHandle -type]	
+			puts "curtype :$ix_cur_type"
+            if {$ix_cur_type != $ix_type } {			
+			    ixNet setA $pHandle -type $ix_type
+                ixNet commit
+			}
+            after 1000			
+            set ix_cur_type [ixNet getA $pHandle -type]
+            if {$ix_cur_type != $ix_type } {			
+			    puts "Error:This card does not support 100g test"
+				puts "NAK"
+				after 3000
+			}
+            after 1000			
         }
+		
+		after 5000
+		puts "Check ports state"
+		foreach pHandle $port_handle {
+			set pState [ixNet getA $pHandle -state]
+			if { $pState != "up" } {
+				after 5000
+				set pState [ixNet getA $pHandle -state]
+				if { $pState != "up" } {
+					puts "Error:100g config,port state is not up: $pHandle state $pState"
+					puts "NAK"
+					after 3000
+				}
+			}
+		}	
+		after 1000
 puts $progressInit        
         foreach {key handle} [array get QTobj] {
             puts "100g speed, Run quickTest:$key"
