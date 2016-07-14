@@ -1203,6 +1203,17 @@ proc QTP_TrafficSet {args} {
 		-learnNumFrames $lng_frames \
 		-learnSendMacOnly $lng_mac_only
 	ixNet commit
+	#add rfc2544 initial rate
+	if {[regexp {.*rfc2544frameLoss.*} $t_handle]} {
+		ixNet setA $t_handle -initialStepLoadRate 100
+		ixNet commit
+	} elseif {[regexp {.*rfc2544throughput.*} $t_handle]} {
+		ixNet setA $t_handle -initialBinaryLoadRate 100
+		ixNet commit
+	} elseif {[regexp {.*rfc2544back2back.*} $t_handle]} {
+		ixNet setA $t_handle -loadRate 100
+		ixNet commit
+	} 
 	#apply the settings
 	ixNet exec apply $element
 }
